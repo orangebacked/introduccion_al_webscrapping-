@@ -1,0 +1,84 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 30 22:15:32 2018
+
+@author: emilianoisaza
+"""
+# importación de librerias
+
+#librería para mandar preguntas a paginas web y extraer su árbol HTML
+import requests 
+
+#librería para parsear el HTML
+from lxml import html
+
+#libreria para hacer el csv
+
+import pandas as pd
+
+# libreria para nombrar iterativamente el archivo
+import datetime
+
+r = requests.get('https://www.easy.com.co/search/?k=cemento')
+
+tree = html.fromstring(r.content)
+
+listcementos = tree.xpath('.//a[contains(@href,"cemento")]/@href')
+
+a = listcementos[10]
+
+r1 = requests.get(f'https://www.easy.com.co{a}')
+
+tree = html.fromstring(r1.content)
+
+price = int(tree.xpath('//*[@id="product_price"]/span/text()')[0].split('\n')[1].replace('$','').replace(',',''))
+
+listelements = [str(x) for x in list(tree.xpath('//table[@id="product_specs_table"]/tr/td/text()'))]
+
+brand = listelements[1]
+
+name = listelements[3]
+
+
+
+def scrapping(elementolista):
+    a = elementolista
+### string formats to get the request
+    r = requests.get(f'https://www.easy.com.co{a}')
+### create the tree
+    tree = html.fromstring(r.content)
+### get all the elements
+    price = int(tree.xpath('//*[@id="product_price"]/span/text()')[0].split('\n')[1].replace('$','').replace(',',''))
+    listelements = [str(x) for x in list(tree.xpath('//table[@id="product_specs_table"]/tr/td/text()'))]
+    brand = listelements[1]
+    name = listelements[3]   
+    return [price, name, brand]
+
+
+### looop para mandar todas los requests a la página
+dflista = []
+for n,elementolista in enumerate(listcementos):
+    try:
+        dflista.append(scrapping(elementolista))
+        print(n)
+    except:
+        print(n,'fail')
+    
+        pass
+   
+    
+df=pd.DataFrame(dflista,columns=['price','name', 'brand'])
+
+
+#### hacer un archivo con la fecha de creación 
+now = datetime.datetime.now()
+
+y = now.year
+m = now.month
+d = now.day
+
+df.to_csv(f'easy_cementos-{y}-{m}-{d}.csv')
+
+
+
